@@ -36,3 +36,22 @@
     transform: rotate(360deg);
   }
 }
+
+.App input {
+  margin-top: 20px;
+  width: 400px;
+  height: 40px;
+  font-size: 16px;
+  padding-left: 10px;
+}
+
+p {
+  margin: 5px;
+  font-size: 12px;
+}
+
+li {
+  margin: 5px;
+  font-size: 12px;
+  justify-content: left;
+}
