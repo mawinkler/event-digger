@@ -1,2 +1,4 @@
 .DS_Store
 yarn.lock
+config.yml
+event-loader/config.yml

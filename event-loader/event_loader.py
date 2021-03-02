@@ -2,11 +2,11 @@
 
 DOCUMENTATION = """
 ---
-module: antimalware_report.py
+module: event_loader.py
 
-short_description: Queries Cloud One Workload Ssecurity for scheduled scan and
-                   antimalware events within a given timeframe. Creates an
-                   Excel file with the report.
+short_description: Queries Cloud One Workload Ssecurity for system and
+                   antimalware events within a given timeframe. Feeds
+                   data to ElasticSearch
 
 description:
     - "TODO"
@@ -19,32 +19,22 @@ author:
 """
 
 EXAMPLES = """
-./antimalware_report.py
+./event_loader.py
 """
 
 RETURN = """
-{'Eicar_test_file': {'k8sn3', 'k8sn2'},
- 'Ransom_PETYA.A': {'k8sn3', 'k8sn2'},
- 'Ransom_PETYA.E': {'k8sn3', 'k8sn2'},
- 'TSPY_INFOSTEAL.XXF': {'k8sn2'},
- 'Trojan.Win32.KILLAV.AF': {'k8sn2'},
- 'computers': 12,
- 'scan_count': 54,
- 'scans_running': 0}
 """
-import csv
 import json
-import pprint
 import sys
 import time
-import datetime
-import pandas as pd
-from vincent.colors import brews
+import sched
+import logging
+from datetime import datetime, timedelta
 
 from datetime import date, datetime
 
 import requests
-import yaml
+import os
 from requests import Session
 from zeep import helpers
 from zeep.client import Client
@@ -52,24 +42,23 @@ from zeep.transports import Transport
 
 from elasticsearch import Elasticsearch, exceptions
 
-# 794	Scheduled Malware Scan Failure Resolved
-# 795	Scheduled Malware Scan Failure
-# 796	Scheduled Malware Scan Task has been Missed
-# 1527	Scheduled Malware Scan Cancellation In Progress
-# 1528	Scheduled Malware Scan Cancellation Completed
-# 1531	Scheduled Malware Scan Paused
-# 1532	Scheduled Malware Scan Resumed
-# 1547	Scheduled Malware Scan Task has been cancelled
-SCHEDULED_MALWARE_SCAN_STARTED = 1523
-SCHEDULED_MALWARE_SCAN_COMPLETED = 1524
+# Logger
+logging.basicConfig(format='%(asctime)s %(levelname)s: %(message)s', level=logging.INFO)
 
-SCAN_TYPE_SCHEDULED = "SCHEDULED"
+
+# Antimalware scan types
 SCAN_TYPE_ALL = "ALL"
 
-es = Elasticsearch(['127.0.0.1:9200'])
-
-pp = pprint.PrettyPrinter()
+# ElasticSearch
+# es = Elasticsearch()
 es_index = "test-index"
+
+# Scheduler
+scheduler = sched.scheduler(time.time, time.sleep)
+scheduler_interval = 3600
+scheduler_delay = 0
+scheduler_overlap = 60
+
 
 def get_paged_computers(api_key, host):
     paged_computers = []
@@ -119,14 +108,12 @@ def get_paged_computers(api_key, host):
     except requests.exceptions.RequestException as e:
         return e
 
-
 def get_indexed(data, index):
     indexed_data = {}
     for element in data:
         indexed_data[element[index]] = element
 
     return indexed_data
-
 
 def get_computers_groups(api_key, host):
     session_url = "https://" + host + "/api/computergroups"
@@ -144,7 +131,6 @@ def get_computers_groups(api_key, host):
 
     return indexed_computer_groups
 
-
 def get_policies(api_key, host):
     session_url = "https://" + host + "/api/policies"
     headers = {"api-secret-key": api_key, "api-version": "v1"}
@@ -156,7 +142,6 @@ def get_policies(api_key, host):
 
     policies = response.json()
     return policies["policies"]
-
 
 def add_computer_info(api_key, host, computers):
     computers_groups = get_computers_groups(api_key, host)
@@ -187,11 +172,9 @@ def soap_auth(client, tenant, username, password):
         tenantName=tenant, username=username, password=password
     )
 
-
 def logout(client, sID):
     client.service.endSession(sID)
     return True
-
 
 def create_event_id_filter(factory, id, operator):
     EnumOperator = factory.EnumOperator(operator)
@@ -224,8 +207,8 @@ def create_file_filter(factory, TimeRangeFrom, TimeRangeTo, TimeSpecific, type):
 def get_am_events(
     client,
     factory,
-    timespan_from,
-    timespan_to,
+    epochStart,
+    epochEnd,
     tenant,
     username,
     password,
@@ -233,8 +216,6 @@ def get_am_events(
     scan_type=SCAN_TYPE_ALL,
 ):
     sID = soap_auth(client, tenant, username, password)
-    epochStart = datetime.strptime(timespan_from + " 00:00:00", "%m.%d.%Y %H:%M:%S")
-    epochEnd = datetime.strptime(timespan_to + " 23:59:59", "%m.%d.%Y %H:%M:%S")
 
     events = []
     id_value, num_requests = 0, 0
@@ -312,7 +293,7 @@ def get_am_events(
                 logout(client, sID)
                 break
         except Exception as e:
-            print(e)
+            logging.error(e)
             logout(client, sID)
             break
 
@@ -322,8 +303,8 @@ def get_am_events(
 def get_sys_events(
     client,
     factory,
-    timespan_from,
-    timespan_to,
+    epochStart,
+    epochEnd,
     tenant,
     username,
     password,
@@ -331,8 +312,6 @@ def get_sys_events(
     event_id=0,
 ):
     sID = soap_auth(client, tenant, username, password)
-    epochStart = datetime.strptime(timespan_from + " 00:00:00", "%m.%d.%Y %H:%M:%S")
-    epochEnd = datetime.strptime(timespan_to + " 23:59:59", "%m.%d.%Y %H:%M:%S")
 
     events = []
     id_value, num_requests = 0, 0
@@ -399,7 +378,7 @@ def get_sys_events(
                 logout(client, sID)
                 break
         except Exception as e:
-            print(e)
+            logging.error(e)
             logout(client, sID)
             break
 
@@ -411,55 +390,41 @@ def getSystemEventID(element):
 
 
 # Elastic Search
-def load_data_in_es(data):
+def load_data_in_es(es, data):
     """ creates an index in elasticsearch """
-    print("Loading data in elasticsearch ...")
+    logging.info("Loading data in elasticsearch ...")
     index=1
     for entry in data:
         res = es.index(index=es_index, doc_type="event", id=entry['timestamp'], body=entry)
         index += 1
-    print("Total events loaded: ", len(data))
+    logging.info("Total events loaded: {}".format(len(data)))
 
-def safe_check_index(index, retry=3):
+def safe_check_index(es, index, retry=3):
     """ connect to ES with retry """
     if not retry:
-        print("Out of retries. Bailing out...")
+        logging.error("Out of retries. Bailing out...")
         sys.exit(1)
     try:
         status = es.indices.exists(index)
         return status
     except exceptions.ConnectionError as e:
-        print(e)
-        print("Unable to connect to ES. Retrying in 5 secs...")
+        logging.error(e)
+        logging.error("Unable to connect to ES. Retrying in 5 secs...")
         time.sleep(5)
         safe_check_index(index, retry-1)
 
-def check_and_load_index(data):
+def check_and_load_index(es, data):
     """ checks if index exits and loads the data accordingly """
-    # if not safe_check_index(es_index):
-    #     print("Index not found...")
-    load_data_in_es(data)
+    # if not safe_check_index(es, es_index):
+    #     logging.info("Index not found...")
+    load_data_in_es(es, data)
 
+def query_events(host, tenant, username, password, indexed_computers, es, sc):
 
-def main():
-
-    # Read configuration
-    with open("config.yml", "r") as ymlfile:
-        cfg = yaml.load(ymlfile, Loader=yaml.FullLoader)
-
-    host = cfg["deepsecurity"]["server"]
-    username = cfg["deepsecurity"]["username"]
-    password = cfg["deepsecurity"]["password"]
-    api_key = cfg["deepsecurity"]["api_key"]
-    tenant = cfg["deepsecurity"]["tenant"]
-    timespan_from = cfg["deepsecurity"]["timespan_from"]
-    timespan_to = cfg["deepsecurity"]["timespan_to"]
-
-    print("Retrieving computers...")
-    computers = get_paged_computers(api_key, host)
-
-    computers_info = add_computer_info(api_key, host, computers)
-    indexed_computers = get_indexed(data=computers_info, index="id")
+    # Calculate Timespan for Event Query
+    time_now = datetime.utcnow()
+    timespan_from = time_now + timedelta(hours = -1) - timedelta(seconds = scheduler_overlap)
+    timespan_to = time_now
 
     session = Session()
     session.verify = True
@@ -471,7 +436,7 @@ def main():
     ###
     # Anti Malware Findings (Within scheduled scans only)
     ###
-    print("Retrieving system events")
+    logging.info("Retrieving system events")
     sys_events = get_sys_events(
         client,
         factory,
@@ -483,7 +448,7 @@ def main():
         indexed_computers,
     )
 
-    print("Retrieving anti malware events")
+    logging.info("Retrieving anti malware events")
     am_events = get_am_events(
         client,
         factory,
@@ -504,7 +469,36 @@ def main():
     for event in am_events:
         results.append(event)
 
-    check_and_load_index(results)
+    check_and_load_index(es, results)
+    scheduler.enter(scheduler_interval, scheduler_delay, query_events, (host, tenant, username, password, indexed_computers, es, sc,))
+
+def main():
+
+    host = os.environ.get('WS_SERVER')
+    tenant = os.environ.get('WS_TENANT')
+    username = os.environ.get('WS_USERNAME')
+    password = os.environ.get('WS_PASSWORD')
+    api_key = os.environ.get('WS_API_KEY')
+
+    es = Elasticsearch(os.environ.get('ELASTICSEARCH'))
+
+    scheduler_interval = int(os.environ.get('SCHED_INTERVAL'))
+    scheduler_delay = int(os.environ.get('SCHED_DELAY'))
+    scheduler_overlap = int(os.environ.get('SCHED_OVERLAP'))
+
+    logging.info("Scheduler configuration: {}:{}:{}".format(scheduler_interval, scheduler_delay, scheduler_overlap))
+    logging.info("Workload Security: https://{}:{}@{}".format(username, "XXXXXXXX", host))
+    logging.info("ElasticSearch: {}".format(os.environ.get('ELASTICSEARCH')))
+
+    logging.info("Retrieving computers...")
+    computers = get_paged_computers(api_key, host)
+
+    computers_info = add_computer_info(api_key, host, computers)
+    indexed_computers = get_indexed(data=computers_info, index="id")
+
+    logging.info("Starting scheduler...")
+    scheduler.enter(scheduler_interval, scheduler_delay, query_events, (host, tenant, username, password, indexed_computers, es, scheduler, ))
+    scheduler.run()
 
 if __name__ == "__main__":
     main()
