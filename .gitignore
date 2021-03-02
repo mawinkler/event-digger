@@ -1,4 +1,6 @@
 .DS_Store
 yarn.lock
 config.yml
+event-digger/config.yml
 event-loader/config.yml
+docker-compose.yaml
