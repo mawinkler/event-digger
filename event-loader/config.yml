@@ -1,0 +1,41 @@
+tenable:
+  api_accesskey: 1a3986c24fcb4aa28f26d367dc016b6d
+  api_secretkey: 001f67a2168d4cfebf4cf88d7898f3e6
+  active_scan: local-scan-10
+  server: tenable.tenhagen.net:10443
+  recast_severity: 1
+  recast_comment: "Cloud One Workload Security"
+
+rapid7:
+  server: https://192.168.0.70:3780
+  username: nxadmin
+  password: Am3l13*W1nkl3r
+
+deepsecurity:
+  server: app.deepsecurity.trendmicro.com:443
+  api_key: E0B772FA-1C18-C615-74AC-7B7E44E5E19E:643B3386-22CC-E6E7-CAAB-479876125D44:2CXw4VOf5UnfN2yEIaa4j3kUCEoVL5lFnXgH2tppRT4=
+  tenant: "Trend Micro Bocking"
+  tenant_id: E0B772FA-1C18-C615-74AC-7B7E44E5E19E
+  token: A6BE4827-E93D-9146-56AC-F75A89666F9F
+  # username: admin
+  # password: "uU6kZs_rxVYMqoyoEPd_PRnb"
+  username: markus_winkler@trendmicro.com
+  password: "qxRpnogZjLi2rmYtVNTwYhLY"
+  # timespan from, defaults to first day of previous month 00:00 (e.g. \"1 Jun 2019 00:00\")
+  timespan_from: "02.01.2021"
+  # timespan to, defaults to last day of previous month 23:59 (e.g. \"30 Jun 2019 23:59\")"
+  timespan_to: "02.08.2021"
+
+computers:
+  # - 192.168.0.89
+  # - 192.168.0.90
+  - k8sn3
+  - 192.168.0.91
+  # - 192.168.0.53
+
+report_file: "report.csv"
+
+
+#python3 report.py --dsm_url=https://app.deepsecurity.trendmicro.com:443 --dsm_user=markus_winkler@trendmicro.com --dsm_password=qxRpnogZjLi2rmYtVNTwYhLY --timespan_from="1 Jan 2019 00:00" --timespan_to="22 Feb 2021 23:59" --dsm_tenant="Trend Micro Bocking" --dsm_tenant_id=E0B772FA-1C18-C615-74AC-7B7E44E5E19E
+
+#python3 report.py --dsm_url=https://192.168.1.136:4119 --dsm_user=admin --dsm_password=Am3l132010 --timespan_from="1 Jan 2019 00:00" --timespan_to="22 Feb 2021 23:59" --dsm_tenant="" --dsm_tenant_id=0

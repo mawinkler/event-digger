@@ -1,5 +1,6 @@
 version: "3"
 services:
+  # docker run -p 9200:9200 -p 9300:9300 -e "discovery.type=single-node" docker.elastic.co/elasticsearch/elasticsearch:6.3.2
   es:
     image: docker.elastic.co/elasticsearch/elasticsearch:6.3.2
     container_name: es
@@ -10,15 +11,16 @@ services:
     network_mode: host
     volumes:
       - esdata1:/usr/share/elasticsearch/data
-  # web:
-  #   image: prakhar1989/foodtrucks-web
-  #   command: python3 app.py
-  #   depends_on:
-  #     - es
-  #   ports:
-  #     - 5000:5000
-  #   volumes:
-  #     - ./flask-app:/opt/flask-app
+
+  web:
+    image: mawinkler/event-digger
+    command: python3 app.py
+    depends_on:
+      - es
+    ports:
+      - 5000:5000
+    # volumes:
+    #   - ./flask-app:/opt/flask-app
 volumes:
     esdata1:
       driver: local
