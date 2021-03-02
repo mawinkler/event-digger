@@ -1,6 +1,6 @@
 # Docker Image which is used as foundation to create
 # a custom Docker Image with this Dockerfile
-FROM node:10
+FROM node:14
 
 LABEL description="Event-Digger for Worload Security"
 LABEL maintainer="markus_winkler@trendmicro.com"
