@@ -5,6 +5,12 @@ services:
     container_name: es
     environment:
       - discovery.type=single-node
+      - http.port=9200
+      - http.cors.enabled=true
+      - http.cors.allow-origin=http://localhost:3000,http://127.0.0.1:3000
+      - http.cors.allow-headers=X-Requested-With,X-Auth-Token,Content-Type,Content-Length,Authorization
+      - http.cors.allow-credentials=true
+      - bootstrap.memory_lock=true
     ports:
       - 9200:9200
     volumes:
@@ -14,6 +20,9 @@ services:
         ipv4_address: 172.16.0.10
 
   loader:
+    build:
+      context: ./event-loader
+      dockerfile: Dockerfile
     image: mawinkler/event-loader:latest
     container_name: loader
     depends_on:
@@ -35,6 +44,9 @@ services:
         ipv4_address: 172.16.0.11
 
   digger:
+    build:
+      context: ./event-digger
+      dockerfile: Dockerfile
     image: mawinkler/event-digger:latest
     depends_on:
       - es
