@@ -2,7 +2,6 @@ import React, { Component } from "react";
 import './App.css';
 import elasticsearch from "elasticsearch";
 
-import { makeStyles } from '@material-ui/core/styles';
 import Table from '@material-ui/core/Table';
 import TableBody from '@material-ui/core/TableBody';
 import TableCell from '@material-ui/core/TableCell';
@@ -21,7 +20,7 @@ const client = new elasticsearch.Client({
   log: 'trace'
 });
 
-const es_index = "test-index";
+const es_index = "ws";
 
 async function checkConnection() {
   let isConnected = false
@@ -47,14 +46,12 @@ class App extends Component {
   }
 
   handleChange(event) {
-    let _this = this;
     const search_query = event.target.value;
     console.log("search_query: " + search_query)
 
     this.setState([])
     client.search({
       index: es_index,
-      // type: 'tweet',
       size: 100,
 
       body: {
@@ -121,7 +118,7 @@ class SearchResults extends Component {
               <TableBody>
                 {results.map(result => (
                   <TableRow>
-                    <TableCell align="left">{result._source.timestamp}</TableCell>
+                    <TableCell align="left">{new Date(result._source.timestamp * 1000).toLocaleString("en-US")}</TableCell>
                     <TableCell align="left">{result._source.event || result._source.scanType}</TableCell>
                     <TableCell align="left">{result._source.target || result._source.hostName}</TableCell>
                     <TableCell align="left">{"" || result._source.malwareName}</TableCell>
