@@ -2,3 +2,4 @@
 yarn.lock
 docker-compose.yaml
 start-docker.sh
+env.sh
