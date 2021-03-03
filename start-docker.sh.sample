@@ -15,9 +15,9 @@ docker run -d --net event_digger_net \
     -e WS_API_KEY="<WORKLOAD SECURITY API KEY>" \
     -e ELASTICSEARCH="es" \
     -e ELASTICSEARCH_INDEX="ws" \
-    -e SCHED_INTERVAL="300" \
+    -e SCHED_INTERVAL="60" \
     -e SCHED_DELAY="0" \
-    -e SCHED_OVERLAP="60" \
+    -e SCHED_OVERLAP="20" \
     -e PRELOAD_DAYS="10" \
     --name event-loader mawinkler/event-loader
 

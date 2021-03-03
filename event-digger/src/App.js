@@ -60,7 +60,7 @@ class App extends Component {
         ],
         query: {
           multi_match: {"query": search_query,
-                        "fields": ["hostName", "target", "description", "malwareName", "infectedFilePath"],
+                        "fields": ["event", "scanType", "hostName", "target", "description", "malwareName", "infectedFilePath"],
                         "slop": 3,
                         "max_expansions": 100,
                         "type": "phrase_prefix"},

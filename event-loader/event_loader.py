@@ -431,10 +431,20 @@ def check_and_load_index(es, es_index, data):
 
 def query_events(host, tenant, username, password, indexed_computers, es, es_index, sc):
 
+    global scheduler_interval
+    global scheduler_delay
+    global scheduler_overlap
+
+    logging.info(
+        "Scheduler configuration (query_events): {}:{}:{}".format(
+            scheduler_interval, scheduler_delay, scheduler_overlap
+        )
+    )
+
     # Calculate Timespan for Event Query
     time_now = datetime.utcnow()
     timespan_from = (
-        time_now + timedelta(hours=-1) - timedelta(seconds=scheduler_overlap)
+        time_now - timedelta(seconds=scheduler_interval) - timedelta(seconds=scheduler_overlap)
     )
     timespan_to = time_now
 
@@ -500,6 +510,16 @@ def query_events(host, tenant, username, password, indexed_computers, es, es_ind
 
 def preload(host, tenant, username, password, indexed_computers, es, es_index):
 
+    global scheduler_interval
+    global scheduler_delay
+    global scheduler_overlap
+
+    logging.info(
+        "Scheduler configuration (preload): {}:{}:{}".format(
+            scheduler_interval, scheduler_delay, scheduler_overlap
+        )
+    )
+
     # Calculate Timespan for Event Query
     time_now = datetime.utcnow()
     timespan_from = time_now - timedelta(days=int(os.environ.get("PRELOAD_DAYS")))
@@ -551,6 +571,10 @@ def preload(host, tenant, username, password, indexed_computers, es, es_index):
 
 
 def main():
+
+    global scheduler_interval
+    global scheduler_delay
+    global scheduler_overlap
 
     host = os.environ.get("WS_SERVER")
     tenant = os.environ.get("WS_TENANT")
