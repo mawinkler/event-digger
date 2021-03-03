@@ -1,4 +1,4 @@
 .DS_Store
 yarn.lock
 docker-compose.yaml
-build-docker.sh
+start-docker.sh
