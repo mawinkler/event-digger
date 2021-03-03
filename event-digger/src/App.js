@@ -14,7 +14,7 @@ import Paper from '@material-ui/core/Paper';
 const client = new elasticsearch.Client({
   host: {
     protocol: 'http',
-    host: '127.0.0.1',
+    host: 'es',
     port: 9200
   },
   log: 'trace'
