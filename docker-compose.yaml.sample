@@ -8,10 +8,14 @@ services:
     ports:
       - 9200:9200
     volumes:
-      - esdata1:/usr/share/elasticsearch/data
+      - es_data:/usr/share/elasticsearch/data
+    networks:
+      event_digger_net:
+        ipv4_address: 172.16.0.10
 
   loader:
     image: mawinkler/event-loader:latest
+    container_name: loader
     depends_on:
       - es
     environment:
@@ -25,7 +29,10 @@ services:
       SCHED_INTERVAL: 60
       SCHED_DELAY: 0
       SCHED_OVERLAP: 20
-      PRELOAD_DAYS: 10
+      PRELOAD_DAYS: 1
+    networks:
+      event_digger_net:
+        ipv4_address: 172.16.0.11
 
   digger:
     image: mawinkler/event-digger:latest
@@ -40,6 +47,14 @@ services:
       event_digger_net:
         ipv4_address: 172.16.0.12
 
+networks:
+  event_digger_net:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.16.0.0/24
+
 volumes:
-    esdata1:
-      driver: local
+  es_data:
+    driver: local
