@@ -56,7 +56,7 @@ class App extends Component {
 
       body: {
         sort: [
-          {"_id": {"order": "asc"}}
+          {"_id": {"order": "desc"}}
         ],
         query: {
           multi_match: {"query": search_query,
