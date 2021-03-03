@@ -29,9 +29,7 @@ import sys
 import time
 import sched
 import logging
-from datetime import datetime, timedelta
-
-from datetime import date, datetime
+from datetime import datetime, timedelta, date
 
 import requests
 import os
@@ -339,6 +337,7 @@ def get_sys_events(
         except:
             logout(client, sID)
             break
+
 
         try:
             if sysEvents["systemEvents"] != None:
