@@ -35,7 +35,7 @@ WORKDIR /app
 COPY --from=dependencies /app/requirements.txt ./
 COPY --from=dependencies /root/.cache /root/.cache
 
-RUN apk add libxslt-dev && \
+RUN apk add libxslt-dev curl && \
     pip3 install -r /app/requirements.txt
 
 COPY --from=build /app/ ./
