@@ -21,19 +21,25 @@ services:
       WS_PASSWORD: <WORKLOAD SECURITY PASSWORD>
       WS_API_KEY: <WORKLOAD SECURITY API KEY>
       ELASTICSEARCH: es
+      ELASTICSEARCH_INDEX: ws
       SCHED_INTERVAL: 300
       SCHED_DELAY: 0
       SCHED_OVERLAP: 60
-      
-  # web:
-  #   image: mawinkler/event-digger
-  #   command: python3 app.py
-  #   depends_on:
-  #     - es
-  #   ports:
-  #     - 5000:5000
-  #   # volumes:
-  #   #   - ./flask-app:/opt/flask-app
+      PRELOAD_DAYS: 10
+
+  digger:
+    image: mawinkler/event-digger:latest
+    depends_on:
+      - es
+    ports:
+      - 3000:3000
+    # The following variables are hard coded within the react app
+    # ELASTICSEARCH: es
+    # ELASTICSEARCH_INDEX: ws
+    networks:
+      event_digger_net:
+        ipv4_address: 172.16.0.12
+
 volumes:
     esdata1:
       driver: local

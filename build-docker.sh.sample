@@ -1,0 +1,36 @@
+#!/bin/bash
+
+# build the event-loader container
+docker build -t mawinkler/event-loader:latest event-loader
+docker push mawinkler/event-loader:latest
+
+# build the event-digger container
+docker build -t mawinkler/event-digger:latest event-digger
+docker push mawinkler/event-digger:latest
+
+# create the network
+docker network create event_digger_net
+
+# start the ES container
+docker run -d --name es --net event_digger_net -p 9200:9200 -p 9300:9300 -e "discovery.type=single-node" docker.elastic.co/elasticsearch/elasticsearch:6.3.2
+
+# start the event-loader container
+docker run -d --net event_digger_net \
+    -e WS_SERVER="app.deepsecurity.trendmicro.com:443" \
+    -e WS_TENANT="<WORKLOAD SECURITY TENANT NAME>" \
+    -e WS_USERNAME="<WORKLOAD SECURITY USER NAME>" \
+    -e WS_PASSWORD="<WORKLOAD SECURITY PASSWORD>" \
+    -e WS_API_KEY="<WORKLOAD SECURITY API KEY>" \
+    -e ELASTICSEARCH="es" \
+    -e ELASTICSEARCH_INDEX="ws" \
+    -e SCHED_INTERVAL="300" \
+    -e SCHED_DELAY="0" \
+    -e SCHED_OVERLAP="60" \
+    -e PRELOAD_DAYS="10" \
+    --name event-loader mawinkler/event-loader
+
+# start the event-digger container
+docker run -d --net event_digger_net -p 3000:3000 --name event-digger mawinkler/event-digger
+
+# Start Chrome in developer mode
+open -na Google\ Chrome --args --user-data-dir=/tmp/temporary-chrome-profile-dir --disable-web-security http://localhost:3000
