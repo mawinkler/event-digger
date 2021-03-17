@@ -24,7 +24,6 @@ services:
     build:
       context: ./event-loader
       dockerfile: Dockerfile
-    image: mawinkler/event-loader:latest
     container_name: loader
     depends_on:
       - es
@@ -48,7 +47,6 @@ services:
     build:
       context: ./event-digger
       dockerfile: Dockerfile
-    image: mawinkler/event-digger:latest
     depends_on:
       - es
     ports:
@@ -72,7 +70,7 @@ services:
     networks:
       event_digger_net:
         ipv4_address: 172.16.0.13
-        
+
 networks:
   event_digger_net:
     driver: bridge
